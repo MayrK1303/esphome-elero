@@ -39,7 +39,9 @@ void EleroCover::loop() {
   this->handle_commands(now);
 
   if((this->current_operation != COVER_OPERATION_IDLE) && (this->open_duration_ > 0) && (this->close_duration_ > 0)) {
-    this->recompute_position();
+    if (!this->tilt_active_) {
+      this->recompute_position();
+    }
     if(this->is_at_target()) {
       this->commands_to_send_.push(this->command_stop_);
       this->current_operation = COVER_OPERATION_IDLE;
@@ -132,12 +134,16 @@ void EleroCover::set_rx_state(uint8_t state) {
   case ELERO_STATE_START_MOVING_UP:
   case ELERO_STATE_MOVING_UP:
     op = COVER_OPERATION_OPENING;
-    current_tilt = 0.0;
+    if (!this->tilt_active_) {
+      current_tilt = 0.0;
+    }
     break;
   case ELERO_STATE_START_MOVING_DOWN:
   case ELERO_STATE_MOVING_DOWN:
     op = COVER_OPERATION_CLOSING;
-    current_tilt = 0.0;
+    if (!this->tilt_active_) {
+      current_tilt = 0.0;
+    }
     break;
   case ELERO_STATE_TILT:
     op = COVER_OPERATION_IDLE;
@@ -182,13 +188,13 @@ void EleroCover::control(const cover::CoverCall &call) {
   }
   if (call.get_tilt().has_value()) {
     auto tilt = *call.get_tilt();
-    if(tilt > 0) {
-      this->commands_to_send_.push(this->command_tilt_);
-      this->tilt = 1.0;
-    } else {
-      this->tilt = 0.0;
-    }
-  }
+
+    this->tilt_active_ = true;
+    this->commands_to_send_.push(this->command_tilt_);
+
+    this->tilt = tilt;
+    this->publish_state();
+}
   if (call.get_toggle().has_value()) {
     if(this->current_operation != COVER_OPERATION_IDLE) {
       this->start_movement(COVER_OPERATION_IDLE);
@@ -208,6 +214,7 @@ void EleroCover::control(const cover::CoverCall &call) {
 // handle_commands function to only publish a new state
 // if at least the transmission was successful
 void EleroCover::start_movement(CoverOperation dir) {
+  this->tilt_active_ = false;
   switch(dir) {
     case COVER_OPERATION_OPENING:
       ESP_LOGV(TAG, "Sending OPEN command");
