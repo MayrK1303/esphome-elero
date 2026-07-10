@@ -14,6 +14,7 @@ void EleroCover::dump_config() {
 
 void EleroCover::setup() {
   this->parent_->register_cover(this);
+  ESP_LOGD(TAG, "Restored tilt position: %.2f", this->tilt);
   auto restore = this->restore_state_();
   if (restore.has_value()) {
     restore->apply(this);
@@ -182,12 +183,13 @@ void EleroCover::control(const cover::CoverCall &call) {
   }
   if (call.get_tilt().has_value()) {
     auto tilt = *call.get_tilt();
-    if(tilt > 0) {
+
+    if (tilt > this->tilt) {
       this->commands_to_send_.push(this->command_tilt_);
-      this->tilt = 1.0;
-    } else {
-      this->tilt = 0.0;
     }
+
+    this->tilt = tilt;
+    this->publish_state();
   }
   if (call.get_toggle().has_value()) {
     if(this->current_operation != COVER_OPERATION_IDLE) {
