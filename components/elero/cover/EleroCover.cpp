@@ -195,6 +195,8 @@ void EleroCover::control(const cover::CoverCall &call) {
     this->motion_mode_ = MotionMode::TILT;
     this->tilt_active_ = true;
     this->commands_to_send_.push(this->command_tilt_);
+    // Test:
+    this->commands_to_send_.push(this->command_stop_);
 
     this->tilt = tilt;
     this->publish_state();
