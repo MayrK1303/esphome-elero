@@ -43,6 +43,11 @@ class EleroCover : public cover::Cover, public Component {
   void recompute_position();
   void start_movement(cover::CoverOperation op);
   bool is_at_target();
+  enum class MotionMode : uint8_t {
+    NONE,
+    DRIVE,
+    TILT
+  };
   
  protected:
   void control(const cover::CoverCall &call) override;
@@ -73,6 +78,7 @@ class EleroCover : public cover::Cover, public Component {
   uint8_t send_retries_{0};
   uint8_t send_packets_{0};
   cover::CoverOperation last_operation_{cover::COVER_OPERATION_OPENING};
+  MotionMode motion_mode_{MotionMode::NONE};
 };
 
 } // namespace elero

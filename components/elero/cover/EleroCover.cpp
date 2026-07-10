@@ -38,7 +38,10 @@ void EleroCover::loop() {
 
   this->handle_commands(now);
 
-  if((this->current_operation != COVER_OPERATION_IDLE) && (this->open_duration_ > 0) && (this->close_duration_ > 0)) {
+ if ((this->motion_mode_ == MotionMode::DRIVE) &&
+    (this->current_operation != COVER_OPERATION_IDLE) &&
+    (this->open_duration_ > 0) &&
+    (this->close_duration_ > 0)) {
     if (!this->tilt_active_) {
       this->recompute_position();
     }
@@ -133,16 +136,14 @@ void EleroCover::set_rx_state(uint8_t state) {
     break;
   case ELERO_STATE_START_MOVING_UP:
   case ELERO_STATE_MOVING_UP:
-    op = COVER_OPERATION_OPENING;
-    if (!this->tilt_active_) {
-      current_tilt = 0.0;
+    if (this->motion_mode_ == MotionMode::DRIVE) {
+        op = COVER_OPERATION_OPENING;
     }
     break;
   case ELERO_STATE_START_MOVING_DOWN:
   case ELERO_STATE_MOVING_DOWN:
-    op = COVER_OPERATION_CLOSING;
-    if (!this->tilt_active_) {
-      current_tilt = 0.0;
+    if (this->motion_mode_ == MotionMode::DRIVE) {
+        op = COVER_OPERATION_CLOSING;
     }
     break;
   case ELERO_STATE_TILT:
@@ -151,6 +152,7 @@ void EleroCover::set_rx_state(uint8_t state) {
     break;
   case ELERO_STATE_STOPPED:
     op = COVER_OPERATION_IDLE;
+    this->motion_mode_ = MotionMode::NONE;
     current_tilt = 0.0;
     break;
   default:
@@ -180,6 +182,7 @@ void EleroCover::control(const cover::CoverCall &call) {
   if (call.get_position().has_value()) {
     auto pos = *call.get_position();
     this->target_position_ = pos;
+    this->motion_mode_ = MotionMode::DRIVE;
     if((pos > this->position) || (pos == COVER_OPEN)) {
       this->start_movement(COVER_OPERATION_OPENING);
     } else {
@@ -189,6 +192,7 @@ void EleroCover::control(const cover::CoverCall &call) {
   if (call.get_tilt().has_value()) {
     auto tilt = *call.get_tilt();
 
+    this->motion_mode_ = MotionMode::TILT;
     this->tilt_active_ = true;
     this->commands_to_send_.push(this->command_tilt_);
 
