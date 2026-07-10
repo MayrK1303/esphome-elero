@@ -176,6 +176,9 @@ void EleroCover::increase_counter() {
 }
 
 void EleroCover::control(const cover::CoverCall &call) {
+  ESP_LOGI(TAG, "Tilt request %.0f%% -> sending 0x%02X",
+         tilt * 100.0f,
+         this->command_tilt_);
   if (call.get_stop()) {
     this->start_movement(COVER_OPERATION_IDLE);
   }
