@@ -38,11 +38,11 @@ void EleroCover::loop() {
 
   this->handle_commands(now);
 
- if ((this->motion_mode_ == MotionMode::DRIVE) &&
-    (this->current_operation != COVER_OPERATION_IDLE) &&
-    (this->open_duration_ > 0) &&
-    (this->close_duration_ > 0)) {
-    if (!this->tilt_active_) {
+  if ((this->motion_mode_ == MotionMode::DRIVE) &&
+      (this->current_operation != COVER_OPERATION_IDLE) &&
+      (this->open_duration_ > 0) &&
+      (this->close_duration_ > 0)) {
+
       this->recompute_position();
     }
     if(this->is_at_target()) {
@@ -196,7 +196,6 @@ void EleroCover::control(const cover::CoverCall &call) {
     auto tilt = *call.get_tilt();
 
     this->motion_mode_ = MotionMode::TILT;
-    this->tilt_active_ = true;
     this->commands_to_send_.push(this->command_tilt_);
 
     this->tilt = tilt;
@@ -221,7 +220,6 @@ void EleroCover::control(const cover::CoverCall &call) {
 // handle_commands function to only publish a new state
 // if at least the transmission was successful
 void EleroCover::start_movement(CoverOperation dir) {
-  this->tilt_active_ = false;
   switch(dir) {
     case COVER_OPERATION_OPENING:
       ESP_LOGV(TAG, "Sending OPEN command");
