@@ -26,6 +26,18 @@ void EleroCover::setup() {
 void EleroCover::loop() {
   uint32_t intvl = this->poll_intvl_;
   uint32_t now = millis();
+  if (this->timed_tilt_active_) {
+    if (millis() >= this->tilt_stop_time_) {
+        ESP_LOGD(TAG, "Timed tilt finished -> STOP");
+
+        this->commands_to_send_.push(this->command_stop_);
+
+        this->timed_tilt_active_ = false;
+        this->motion_mode_ = MotionMode::NONE;
+
+        this->publish_state();
+    }
+  }
   if(this->current_operation != COVER_OPERATION_IDLE) {
     if((now - ELERO_TIMEOUT_MOVEMENT) < this->movement_start_) // do not poll frequently for an extended period of time
       intvl = ELERO_POLL_INTERVAL_MOVING;
