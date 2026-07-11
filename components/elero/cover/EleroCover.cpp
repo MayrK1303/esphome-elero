@@ -188,9 +188,7 @@ void EleroCover::increase_counter() {
 }
 
 void EleroCover::control(const cover::CoverCall &call) {
-  ESP_LOGI(TAG, "Tilt request %.0f%% -> sending 0x%02X",
-         tilt * 100.0f,
-         this->command_tilt_);
+
   if (call.get_stop()) {
     this->start_movement(COVER_OPERATION_IDLE);
   }
@@ -206,7 +204,9 @@ void EleroCover::control(const cover::CoverCall &call) {
   }
   if (call.get_tilt().has_value()) {
       auto tilt = *call.get_tilt();
-
+      ESP_LOGI(TAG, "Tilt request %.0f%% -> sending 0x%02X",
+        tilt * 100.0f,
+        this->command_tilt_);
       this->motion_mode_ = MotionMode::TILT;
 
       if (this->tilt_control_ == TiltControl::COMMAND) {

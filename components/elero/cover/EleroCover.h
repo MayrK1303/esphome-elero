@@ -41,13 +41,9 @@ class EleroCover : public cover::Cover, public Component {
   void set_rx_state(uint8_t state);
   void handle_commands(uint32_t now);
   void recompute_position();
-  void set_tilt_control(const std::string &mode) {
-    if (mode == "timed")
-      this->tilt_control_ = TiltControl::TIMED;
-    else
-      this->tilt_control_ = TiltControl::COMMAND;
+  void set_tilt_control(uint8_t mode) {
+    this->tilt_control_ = static_cast<TiltControl>(mode);
   }
-
   void set_tilt_travel_time(uint32_t ms) {
     this->tilt_travel_time_ = ms;
   }
@@ -104,7 +100,6 @@ protected:
   uint8_t send_retries_{0};
   uint8_t send_packets_{0};
   cover::CoverOperation last_operation_{cover::COVER_OPERATION_OPENING};
-  MotionMode motion_mode_{MotionMode::NONE};
 };
 
 } // namespace elero

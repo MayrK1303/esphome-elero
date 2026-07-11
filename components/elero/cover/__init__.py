@@ -22,8 +22,8 @@ CONF_COMMAND_DOWN = "command_down"
 CONF_COMMAND_STOP = "command_stop"
 CONF_COMMAND_CHECK = "command_check"
 CONF_COMMAND_TILT = "command_tilt"
-# CONF_TILT_CONTROL = "tilt_control"
-# CONF_TILT_TRAVEL_TIME = "tilt_travel_time"
+CONF_TILT_CONTROL = "tilt_control"
+CONF_TILT_TRAVEL_TIME = "tilt_travel_time"
 CONF_POLL_INTERVAL = "poll_interval"
 CONF_SUPPORTS_TILT = "supports_tilt"
 
@@ -36,10 +36,9 @@ def poll_interval(value):
 
 TILT_CONTROL = cv.enum(
     {
-        "command": "command",
-        "timed": "timed",
-    },
-    lower=True,
+        "command": 0,
+        "timed": 1,
+    }
 )
 
 CONFIG_SCHEMA = cover.cover_schema(EleroCover).extend(
@@ -61,8 +60,8 @@ CONFIG_SCHEMA = cover.cover_schema(EleroCover).extend(
         cv.Optional(CONF_COMMAND_STOP, default=0x10): cv.hex_int_range(min=0x0, max=0xff),
         cv.Optional(CONF_COMMAND_CHECK, default=0x00): cv.hex_int_range(min=0x0, max=0xff),
         cv.Optional(CONF_COMMAND_TILT, default=0x24): cv.hex_int_range(min=0x0, max=0xff),
-#        cv.Optional(CONF_SUPPORTS_TILT, default=False): cv.boolean,
-#        cv.Optional(CONF_TILT_CONTROL, default="command"): TILT_CONTROL,
+        cv.Optional(CONF_SUPPORTS_TILT, default=False): cv.boolean,
+        cv.Optional(CONF_TILT_CONTROL, default="command"): TILT_CONTROL,
 #        cv.Optional(
 #            CONF_TILT_TRAVEL_TIME,
 #            default="1200ms",
