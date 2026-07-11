@@ -174,9 +174,6 @@ void EleroCover::set_rx_state(uint8_t state) {
 
   default:
     op = COVER_OPERATION_IDLE;
-    if (this->motion_mode_ != MotionMode::TILT) {
-      current_tilt = 0.0;
-    }
     break;
   }
 
