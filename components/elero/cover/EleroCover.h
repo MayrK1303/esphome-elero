@@ -41,10 +41,12 @@ class EleroCover : public cover::Cover, public Component {
   void set_rx_state(uint8_t state);
   void handle_commands(uint32_t now);
   void recompute_position();
-  void set_tilt_control(const std::string &mode);
-  void set_tilt_travel_time(uint32_t ms);
   void set_tilt_control(uint8_t mode) {
-    tilt_control_ = static_cast<TiltControl>(mode);
+    this->tilt_control_ = static_cast<TiltControl>(mode);
+  }
+
+  void set_tilt_travel_time(uint32_t ms) {
+    this->tilt_travel_time_ = ms;
   }
   void start_movement(cover::CoverOperation op);
   bool is_at_target();
@@ -55,12 +57,19 @@ class EleroCover : public cover::Cover, public Component {
   };
 
   enum class TiltControl : uint8_t {
-      COMMAND,
-      TIMED
+      COMMAND = 0,
+      TIMED = 1
   };
 
   MotionMode motion_mode_{MotionMode::NONE};
   TiltControl tilt_control_{TiltControl::COMMAND};
+
+  // Laufzeitvariablen
+  uint32_t tilt_start_time_{0};
+  uint32_t tilt_stop_time_{0};
+
+  float tilt_target_{0.0f};
+  bool timed_tilt_active_{false};
 
   uint32_t tilt_travel_time_{1200};
   
