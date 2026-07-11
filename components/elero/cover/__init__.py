@@ -22,8 +22,8 @@ CONF_COMMAND_DOWN = "command_down"
 CONF_COMMAND_STOP = "command_stop"
 CONF_COMMAND_CHECK = "command_check"
 CONF_COMMAND_TILT = "command_tilt"
-CONF_TILT_CONTROL = "tilt_control"
-CONF_TILT_TRAVEL_TIME = "tilt_travel_time"
+# CONF_TILT_CONTROL = "tilt_control"
+# CONF_TILT_TRAVEL_TIME = "tilt_travel_time"
 CONF_POLL_INTERVAL = "poll_interval"
 CONF_SUPPORTS_TILT = "supports_tilt"
 
@@ -36,10 +36,10 @@ def poll_interval(value):
 
 TILT_CONTROL = cv.enum(
     {
-        "command": 0,
-        "timed": 1,
+        "command": "command",
+        "timed": "timed",
     },
-    default="command"
+    lower=True,
 )
 
 CONFIG_SCHEMA = cover.cover_schema(EleroCover).extend(
@@ -61,12 +61,12 @@ CONFIG_SCHEMA = cover.cover_schema(EleroCover).extend(
         cv.Optional(CONF_COMMAND_STOP, default=0x10): cv.hex_int_range(min=0x0, max=0xff),
         cv.Optional(CONF_COMMAND_CHECK, default=0x00): cv.hex_int_range(min=0x0, max=0xff),
         cv.Optional(CONF_COMMAND_TILT, default=0x24): cv.hex_int_range(min=0x0, max=0xff),
-        cv.Optional(CONF_SUPPORTS_TILT, default=False): cv.boolean,
-        cv.Optional(CONF_TILT_CONTROL, default="command"): TILT_CONTROL,
-        cv.Optional(
-            CONF_TILT_TRAVEL_TIME,
-            default="1200ms",
-        ): cv.positive_time_period_milliseconds,
+#        cv.Optional(CONF_SUPPORTS_TILT, default=False): cv.boolean,
+#        cv.Optional(CONF_TILT_CONTROL, default="command"): TILT_CONTROL,
+#        cv.Optional(
+#            CONF_TILT_TRAVEL_TIME,
+#            default="1200ms",
+#        ): cv.positive_time_period_milliseconds,
     }
 ).extend(cv.COMPONENT_SCHEMA)
 
@@ -94,5 +94,5 @@ async def to_code(config):
     cg.add(var.set_command_tilt(config[CONF_COMMAND_TILT]))
     cg.add(var.set_poll_interval(config[CONF_POLL_INTERVAL]))
     cg.add(var.set_supports_tilt(config[CONF_SUPPORTS_TILT]))
-    cg.add(var.set_tilt_control(config[CONF_TILT_CONTROL]))
-    cg.add(var.set_tilt_travel_time(config[CONF_TILT_TRAVEL_TIME]))
+ #   cg.add(var.set_tilt_control(config[CONF_TILT_CONTROL]))
+ #   cg.add(var.set_tilt_travel_time(config[CONF_TILT_TRAVEL_TIME]))
