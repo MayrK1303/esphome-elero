@@ -39,7 +39,7 @@ TILT_CONTROL = cv.enum(
         "command": 0,
         "timed": 1,
     },
-    int=True,
+    default="command"
 )
 
 CONFIG_SCHEMA = cover.cover_schema(EleroCover).extend(
