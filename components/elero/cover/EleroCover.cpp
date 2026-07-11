@@ -163,15 +163,8 @@ void EleroCover::set_rx_state(uint8_t state) {
     break;
   case ELERO_STATE_STOPPED:
     op = COVER_OPERATION_IDLE;
-
-    // Nach zeitgesteuertem Tilt den angeforderten Wert behalten.
-    if (this->motion_mode_ != MotionMode::TILT) {
-      current_tilt = 0.0;
-    }
-
     this->motion_mode_ = MotionMode::NONE;
     break;
-
   default:
     op = COVER_OPERATION_IDLE;
     break;
@@ -217,16 +210,31 @@ void EleroCover::control(const cover::CoverCall &call) {
       if (this->tilt_control_ == TiltControl::COMMAND) {
           this->commands_to_send_.push(this->command_tilt_);
       } else {
-          // Vorbereitung für zeitgesteuerten Tilt
-          this->tilt_target_ = tilt;
-          this->timed_tilt_active_ = true;
+        const float tilt_delta = tilt - this->tilt;
 
-          this->tilt_start_time_ = millis();
-          this->tilt_stop_time_ =
-              this->tilt_start_time_ +
-              (uint32_t)(tilt * this->tilt_travel_time_);
+        // Keine Funktelegramme senden, wenn der Zielwert bereits erreicht ist.
+        if (tilt_delta == 0.0f) {
+          return;
+        }
 
+        this->tilt_target_ = tilt;
+        this->timed_tilt_active_ = true;
+
+        const float tilt_distance =
+            tilt_delta > 0.0f ? tilt_delta : -tilt_delta;
+
+        this->tilt_start_time_ = millis();
+        this->tilt_stop_time_ =
+            this->tilt_start_time_ +
+            static_cast<uint32_t>(tilt_distance * this->tilt_travel_time_);
+
+        if (tilt_delta > 0.0f) {
+          ESP_LOGD(TAG, "Timed tilt opening to %.0f%%", tilt * 100.0f);
           this->commands_to_send_.push(this->command_up_);
+        } else {
+          ESP_LOGD(TAG, "Timed tilt closing to %.0f%%", tilt * 100.0f);
+          this->commands_to_send_.push(this->command_down_);
+        }
       }
 
       this->tilt = tilt;
@@ -257,7 +265,7 @@ void EleroCover::start_movement(CoverOperation dir) {
       ESP_LOGV(TAG, "Sending OPEN command");
       this->commands_to_send_.push(this->command_up_);
       // Reset tilt state on movement
-      this->tilt = 0.0;
+      this->tilt = 1.0f;
       this->last_operation_ = COVER_OPERATION_OPENING;
     break;
     case COVER_OPERATION_CLOSING:
