@@ -55,16 +55,16 @@ void EleroCover::loop() {
       (this->open_duration_ > 0) &&
       (this->close_duration_ > 0)) {
 
-      this->recompute_position();
-    }
-    if(this->is_at_target()) {
+    this->recompute_position();
+
+    if (this->is_at_target()) {
       this->commands_to_send_.push(this->command_stop_);
       this->current_operation = COVER_OPERATION_IDLE;
       this->target_position_ = COVER_OPEN;
     }
 
-    // Publish position every second
-    if(now - this->last_publish_ > 1000) {
+    // Position höchstens einmal pro Sekunde veröffentlichen
+    if (now - this->last_publish_ > 1000) {
       this->publish_state(false);
       this->last_publish_ = now;
     }
