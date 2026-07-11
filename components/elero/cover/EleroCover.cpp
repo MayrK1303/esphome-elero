@@ -193,14 +193,29 @@ void EleroCover::control(const cover::CoverCall &call) {
     }
   }
   if (call.get_tilt().has_value()) {
-    auto tilt = *call.get_tilt();
+      auto tilt = *call.get_tilt();
 
-    this->motion_mode_ = MotionMode::TILT;
-    this->commands_to_send_.push(this->command_tilt_);
+      this->motion_mode_ = MotionMode::TILT;
 
-    this->tilt = tilt;
-    this->publish_state();
-}
+      if (this->tilt_control_ == TiltControl::COMMAND) {
+          this->commands_to_send_.push(this->command_tilt_);
+      } else {
+          // Vorbereitung für zeitgesteuerten Tilt
+          this->tilt_target_ = tilt;
+          this->timed_tilt_active_ = true;
+
+          this->tilt_start_time_ = millis();
+          this->tilt_stop_time_ =
+              this->tilt_start_time_ +
+              (uint32_t)(tilt * this->tilt_travel_time_);
+
+          this->commands_to_send_.push(this->command_up_);
+      }
+
+      this->tilt = tilt;
+      this->publish_state();
+      return;
+  }
   if (call.get_toggle().has_value()) {
     if(this->current_operation != COVER_OPERATION_IDLE) {
       this->start_movement(COVER_OPERATION_IDLE);
