@@ -33,7 +33,6 @@ void EleroCover::loop() {
         this->commands_to_send_.push(this->command_stop_);
 
         this->timed_tilt_active_ = false;
-        this->motion_mode_ = MotionMode::NONE;
 
         this->publish_state();
     }
@@ -162,15 +161,16 @@ void EleroCover::set_rx_state(uint8_t state) {
     op = COVER_OPERATION_IDLE;
     current_tilt = 1.0;
     break;
-  case ELERO_STATE_STOPPED:
-    op = COVER_OPERATION_IDLE;
-    this->motion_mode_ = MotionMode::NONE;
-    current_tilt = 0.0;
-    break;
-  default:
-    op = COVER_OPERATION_IDLE;
-    current_tilt = 0.0;
-  }
+    case ELERO_STATE_STOPPED:
+      op = COVER_OPERATION_IDLE;
+
+      // Nach zeitgesteuertem Tilt den angeforderten Wert behalten.
+      if (this->motion_mode_ != MotionMode::TILT) {
+        current_tilt = 0.0;
+      }
+
+      this->motion_mode_ = MotionMode::NONE;
+      break;
 
   if((pos != this->position) || (op != this->current_operation) || (current_tilt != this->tilt)) {
     this->position = pos;
