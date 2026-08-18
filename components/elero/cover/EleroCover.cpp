@@ -57,7 +57,7 @@ void EleroCover::loop() {
     this->recompute_position();
 
     if (this->is_at_target()) {
-      this->commands_to_send_.push(this->stop_command_for(this->current_operation));
+      this->commands_to_send_.push(this->command_stop_);
       this->current_operation = COVER_OPERATION_IDLE;
       this->target_position_ = COVER_OPEN;
     }
@@ -278,8 +278,7 @@ void EleroCover::start_movement(CoverOperation dir) {
       this->last_operation_ = COVER_OPERATION_CLOSING;
     break;
     case COVER_OPERATION_IDLE:
-      this->commands_to_send_.push(this->stop_command_for(
-          this->current_operation == COVER_OPERATION_IDLE ? this->last_operation_ : this->current_operation));
+      this->commands_to_send_.push(this->command_stop_);
     break;
   }
 
