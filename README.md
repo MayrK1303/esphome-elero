@@ -58,6 +58,8 @@ cover:
     hop: 0x0a
     command_check: 0x00
     command_stop: 0x10
+    command_stop_up: 0x10
+    command_stop_down: 0x10
     command_up: 0x20
     command_down: 0x40
     command_tilt: 0x24
@@ -91,6 +93,8 @@ cover:
   * `hop`: Configure the Hop byte if different from `0x0a` (Optional)
   * `command_check`: Configure the command sent for getting the blind status if different from `0x00` (Optional)
   * `command_stop`: Configure the command sent for stopping the blind if different from `0x10` (Optional)
+  * `command_stop_up`: Override the stop command after upward movement (Optional)
+  * `command_stop_down`: Override the stop command after downward movement (Optional)
   * `command_up`: Configure the command sent for opening the blind if different from `0x20` (Optional)
   * `command_down`: Configure the command sent for closing the blind if different from `0x40` (Optional)
   * `command_tilt`: Configure the command sent for tilting the blind if different from `0x24` (Optional)

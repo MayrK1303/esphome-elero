@@ -30,7 +30,7 @@ void EleroCover::loop() {
     if (millis() >= this->tilt_stop_time_) {
         ESP_LOGD(TAG, "Timed tilt finished -> STOP");
 
-        this->commands_to_send_.push(this->command_stop_);
+        this->commands_to_send_.push(this->stop_command_for(this->last_operation_));
 
         this->timed_tilt_active_ = false;
         this->motion_mode_ = MotionMode::NONE;
@@ -55,10 +55,10 @@ void EleroCover::loop() {
       (this->open_duration_ > 0) &&
       (this->close_duration_ > 0)) {
 
-      this->recompute_position();
-    }
-    if(this->is_at_target()) {
-      this->commands_to_send_.push(this->command_stop_);
+    this->recompute_position();
+
+    if (this->is_at_target()) {
+      this->commands_to_send_.push(this->stop_command_for(this->current_operation));
       this->current_operation = COVER_OPERATION_IDLE;
       this->target_position_ = COVER_OPEN;
     }
@@ -188,9 +188,6 @@ void EleroCover::increase_counter() {
 }
 
 void EleroCover::control(const cover::CoverCall &call) {
-  ESP_LOGI(TAG, "Tilt request %.0f%% -> sending 0x%02X",
-         tilt * 100.0f,
-         this->command_tilt_);
   if (call.get_stop()) {
     this->start_movement(COVER_OPERATION_IDLE);
   }
@@ -206,22 +203,42 @@ void EleroCover::control(const cover::CoverCall &call) {
   }
   if (call.get_tilt().has_value()) {
       auto tilt = *call.get_tilt();
+      ESP_LOGI(TAG, "Tilt request %.0f%% -> sending 0x%02X",
+        tilt * 100.0f,
+        this->command_tilt_);
 
       this->motion_mode_ = MotionMode::TILT;
 
       if (this->tilt_control_ == TiltControl::COMMAND) {
           this->commands_to_send_.push(this->command_tilt_);
       } else {
-          // Vorbereitung für zeitgesteuerten Tilt
-          this->tilt_target_ = tilt;
-          this->timed_tilt_active_ = true;
+        const float tilt_delta = tilt - this->tilt;
 
-          this->tilt_start_time_ = millis();
-          this->tilt_stop_time_ =
-              this->tilt_start_time_ +
-              (uint32_t)(tilt * this->tilt_travel_time_);
+        // Keine Funktelegramme senden, wenn der Zielwert bereits erreicht ist.
+        if (tilt_delta == 0.0f) {
+          return;
+        }
 
+        this->tilt_target_ = tilt;
+        this->timed_tilt_active_ = true;
+
+        const float tilt_distance =
+            tilt_delta > 0.0f ? tilt_delta : -tilt_delta;
+
+        this->tilt_start_time_ = millis();
+        this->tilt_stop_time_ =
+            this->tilt_start_time_ +
+            static_cast<uint32_t>(tilt_distance * this->tilt_travel_time_);
+
+        if (tilt_delta > 0.0f) {
+          ESP_LOGD(TAG, "Timed tilt opening to %.0f%%", tilt * 100.0f);
+          this->last_operation_ = COVER_OPERATION_OPENING;
           this->commands_to_send_.push(this->command_up_);
+        } else {
+          ESP_LOGD(TAG, "Timed tilt closing to %.0f%%", tilt * 100.0f);
+          this->last_operation_ = COVER_OPERATION_CLOSING;
+          this->commands_to_send_.push(this->command_down_);
+        }
       }
 
       this->tilt = tilt;
@@ -263,7 +280,8 @@ void EleroCover::start_movement(CoverOperation dir) {
       this->last_operation_ = COVER_OPERATION_CLOSING;
     break;
     case COVER_OPERATION_IDLE:
-      this->commands_to_send_.push(this->command_stop_);
+      this->commands_to_send_.push(this->stop_command_for(
+          this->current_operation == COVER_OPERATION_IDLE ? this->last_operation_ : this->current_operation));
     break;
   }
 
@@ -274,6 +292,14 @@ void EleroCover::start_movement(CoverOperation dir) {
   this->movement_start_ = millis();
   this->last_recompute_time_ = millis();
   this->publish_state();
+}
+
+uint8_t EleroCover::stop_command_for(CoverOperation op) const {
+  if(op == COVER_OPERATION_OPENING)
+    return this->command_stop_up_;
+  if(op == COVER_OPERATION_CLOSING)
+    return this->command_stop_down_;
+  return this->command_stop_;
 }
 
 void EleroCover::recompute_position() {
