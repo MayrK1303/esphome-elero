@@ -29,7 +29,13 @@ class EleroCover : public cover::Cover, public Component {
   void set_pckinf_2(uint8_t pckinf) { this->command_.pck_inf[1] = pckinf; }
   void set_command_up(uint8_t cmd) { this->command_up_ = cmd; }
   void set_command_down(uint8_t cmd) { this->command_down_ = cmd; }
-  void set_command_stop(uint8_t cmd) { this->command_stop_ = cmd; }
+  void set_command_stop(uint8_t cmd) {
+    this->command_stop_ = cmd;
+    this->command_stop_up_ = cmd;
+    this->command_stop_down_ = cmd;
+  }
+  void set_command_stop_up(uint8_t cmd) { this->command_stop_up_ = cmd; }
+  void set_command_stop_down(uint8_t cmd) { this->command_stop_down_ = cmd; }
   void set_command_check(uint8_t cmd) { this->command_check_ = cmd; }
   void set_command_tilt(uint8_t cmd) { this->command_tilt_ = cmd; }
   void set_poll_offset(uint32_t offset) { this->poll_offset_ = offset; }
@@ -48,6 +54,7 @@ class EleroCover : public cover::Cover, public Component {
     this->tilt_travel_time_ = ms;
   }
   void start_movement(cover::CoverOperation op);
+  uint8_t stop_command_for(cover::CoverOperation op) const;
   bool is_at_target();
   enum class MotionMode : uint8_t {
       NONE,
@@ -95,6 +102,8 @@ protected:
   uint8_t command_down_{0x40};
   uint8_t command_check_{0x00};
   uint8_t command_stop_{0x10};
+  uint8_t command_stop_up_{0x10};
+  uint8_t command_stop_down_{0x10};
   uint8_t command_tilt_{0x24};
   std::queue<uint8_t> commands_to_send_;
   uint8_t send_retries_{0};
