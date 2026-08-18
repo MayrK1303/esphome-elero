@@ -156,7 +156,31 @@ bool Elero::wait_rx() {
   
   if(timeout > 0)
     return true;
-  ESP_LOGE(TAG, "Timed out waiting for RX: 0x%02x", this->read_status(CC1101_MARCSTATE));
+
+  uint8_t marcstate = this->read_status(CC1101_MARCSTATE);
+  uint8_t rxbytes = this->read_status(CC1101_RXBYTES);
+  ESP_LOGE(TAG, "Timed out waiting for RX: MARCSTATE=0x%02x RXBYTES=0x%02x", marcstate, rxbytes);
+
+  if(marcstate == CC1101_MARCSTATE_RXFIFO_OFLOW) {
+    ESP_LOGW(TAG, "RX FIFO overflow, flushing FIFO and restarting RX");
+    this->write_cmd(CC1101_SIDLE);
+    if(!this->wait_idle())
+      return false;
+    this->write_cmd(CC1101_SFRX);
+    this->write_cmd(CC1101_SRX);
+
+    timeout = 200;
+    while ((this->read_status(CC1101_MARCSTATE) != CC1101_MARCSTATE_RX) && (--timeout != 0)) {
+      delay_microseconds_safe(200);
+    }
+    if(timeout > 0) {
+      ESP_LOGW(TAG, "RX recovered after FIFO overflow");
+      return true;
+    }
+
+    ESP_LOGE(TAG, "RX recovery failed: MARCSTATE=0x%02x RXBYTES=0x%02x",
+             this->read_status(CC1101_MARCSTATE), this->read_status(CC1101_RXBYTES));
+  }
   return false;
 }
 
