@@ -93,6 +93,7 @@ class Elero : public spi::SPIDevice<spi::BIT_ORDER_MSB_FIRST, spi::CLOCK_POLARIT
   void set_freq1(uint8_t freq) { freq1_ = freq; }
   void set_freq2(uint8_t freq) { freq2_ = freq; }
   void set_raw_diagnostic(bool raw_diagnostic) { raw_diagnostic_ = raw_diagnostic; }
+  void set_raw_rssi_threshold(int8_t threshold) { raw_rssi_threshold_ = threshold; }
 
  private:
   uint8_t count_bits(uint8_t byte);
@@ -120,6 +121,10 @@ class Elero : public spi::SPIDevice<spi::BIT_ORDER_MSB_FIRST, spi::CLOCK_POLARIT
   volatile uint16_t raw_edge_count_{0};
   volatile uint32_t raw_last_edge_us_{0};
   int16_t raw_rssi_dbm_{0};
+  int16_t raw_rssi_peak_dbm_{-127};
+  int8_t raw_rssi_threshold_{-90};
+  uint32_t raw_below_threshold_since_ms_{0};
+  uint32_t raw_last_rssi_log_ms_{0};
   volatile uint32_t raw_edges_[RAW_EDGE_CAPACITY];
   InternalGPIOPin *gdo0_pin_{nullptr};
   ISRInternalGPIOPin gdo0_irq_pin_{nullptr};
