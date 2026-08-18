@@ -113,11 +113,13 @@ class Elero : public spi::SPIDevice<spi::BIT_ORDER_MSB_FIRST, spi::CLOCK_POLARIT
   uint8_t freq0_{0x7a};
   uint8_t freq1_{0x71};
   uint8_t freq2_{0x21};
-  static const uint16_t RAW_EDGE_CAPACITY = 512;
+  static const uint16_t RAW_EDGE_CAPACITY = 2048;
   bool raw_diagnostic_{false};
+  volatile bool raw_capture_active_{false};
   volatile bool raw_ready_{false};
   volatile uint16_t raw_edge_count_{0};
   volatile uint32_t raw_last_edge_us_{0};
+  int16_t raw_rssi_dbm_{0};
   volatile uint32_t raw_edges_[RAW_EDGE_CAPACITY];
   InternalGPIOPin *gdo0_pin_{nullptr};
   ISRInternalGPIOPin gdo0_irq_pin_{nullptr};
