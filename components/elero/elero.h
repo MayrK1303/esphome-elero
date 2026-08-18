@@ -67,6 +67,7 @@ class Elero : public spi::SPIDevice<spi::BIT_ORDER_MSB_FIRST, spi::CLOCK_POLARIT
 
   static void interrupt(Elero *arg);
   void set_received();
+  void handle_raw_edge();
   void dump_config() override;
   float get_setup_priority() const override { return setup_priority::DATA; }
   void reset();
@@ -91,6 +92,7 @@ class Elero : public spi::SPIDevice<spi::BIT_ORDER_MSB_FIRST, spi::CLOCK_POLARIT
   void set_freq0(uint8_t freq) { freq0_ = freq; }
   void set_freq1(uint8_t freq) { freq1_ = freq; }
   void set_freq2(uint8_t freq) { freq2_ = freq; }
+  void set_raw_diagnostic(bool raw_diagnostic) { raw_diagnostic_ = raw_diagnostic; }
 
  private:
   uint8_t count_bits(uint8_t byte);
@@ -111,6 +113,12 @@ class Elero : public spi::SPIDevice<spi::BIT_ORDER_MSB_FIRST, spi::CLOCK_POLARIT
   uint8_t freq0_{0x7a};
   uint8_t freq1_{0x71};
   uint8_t freq2_{0x21};
+  static const uint16_t RAW_EDGE_CAPACITY = 512;
+  bool raw_diagnostic_{false};
+  volatile bool raw_ready_{false};
+  volatile uint16_t raw_edge_count_{0};
+  volatile uint32_t raw_last_edge_us_{0};
+  volatile uint32_t raw_edges_[RAW_EDGE_CAPACITY];
   InternalGPIOPin *gdo0_pin_{nullptr};
   ISRInternalGPIOPin gdo0_irq_pin_{nullptr};
   std::map<uint32_t, EleroCover*> address_to_cover_mapping_;
