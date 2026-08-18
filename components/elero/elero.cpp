@@ -11,6 +11,31 @@ static const uint8_t flash_table_encode[] = {0x08, 0x02, 0x0d, 0x01, 0x0f, 0x0e,
 static const uint8_t flash_table_decode[] = {0x0a, 0x03, 0x01, 0x0c, 0x0d, 0x07, 0x0f, 0x06, 0x00, 0x08, 0x0b, 0x0e, 0x09, 0x02, 0x05, 0x04};
 
 void Elero::loop() {
+  if(this->raw_diagnostic_) {
+    if(!this->raw_ready_ && this->raw_edge_count_ >= 16 &&
+       (micros() - this->raw_last_edge_us_) > 15000) {
+      this->raw_ready_ = true;
+    }
+
+    if(this->raw_ready_) {
+      uint16_t count = this->raw_edge_count_;
+      ESP_LOGD(TAG, "AOK raw frame: edges=%u", count);
+      for(uint16_t offset = 0; offset < count; offset += 32) {
+        char line[320];
+        size_t pos = 0;
+        uint16_t end = std::min<uint16_t>(offset + 32, count);
+        for(uint16_t i = offset; i < end && pos < sizeof(line); i++) {
+          pos += snprintf(line + pos, sizeof(line) - pos, "%s%u",
+                          i == offset ? "" : ",", (unsigned)this->raw_edges_[i]);
+        }
+        ESP_LOGD(TAG, "AOK raw us[%u]: %s", offset, line);
+      }
+      this->raw_edge_count_ = 0;
+      this->raw_ready_ = false;
+    }
+    return;
+  }
+
   if(this->received_) {
     ESP_LOGVV(TAG, "loop says \"received\"");
     this->received_ = false;
@@ -35,7 +60,29 @@ void Elero::loop() {
 }
 
 void IRAM_ATTR Elero::interrupt(Elero *arg) {
-  arg->set_received();
+  if(arg->raw_diagnostic_)
+    arg->handle_raw_edge();
+  else
+    arg->set_received();
+}
+
+void IRAM_ATTR Elero::handle_raw_edge() {
+  uint32_t now = micros();
+  uint32_t delta = now - this->raw_last_edge_us_;
+  this->raw_last_edge_us_ = now;
+  if(this->raw_ready_)
+    return;
+  if(delta > 15000) {
+    if(this->raw_edge_count_ >= 16)
+      this->raw_ready_ = true;
+    else
+      this->raw_edge_count_ = 0;
+    return;
+  }
+  if(this->raw_edge_count_ < RAW_EDGE_CAPACITY)
+    this->raw_edges_[this->raw_edge_count_++] = delta;
+  else
+    this->raw_ready_ = true;
 }
 
 void IRAM_ATTR Elero::set_received() {
@@ -44,6 +91,7 @@ void IRAM_ATTR Elero::set_received() {
 
 void Elero::dump_config() {
   ESP_LOGCONFIG(TAG, "Elero Config: ");
+  ESP_LOGCONFIG(TAG, "  Raw diagnostic: %s", YESNO(this->raw_diagnostic_));
 }
 
 void Elero::setup() {
@@ -51,7 +99,8 @@ void Elero::setup() {
   this->spi_setup();
   this->gdo0_pin_->setup();
   this->gdo0_irq_pin_ = this->gdo0_pin_->to_isr();
-  this->gdo0_pin_->attach_interrupt(Elero::interrupt, this, gpio::INTERRUPT_FALLING_EDGE);
+  this->gdo0_pin_->attach_interrupt(Elero::interrupt, this,
+      this->raw_diagnostic_ ? gpio::INTERRUPT_ANY_EDGE : gpio::INTERRUPT_FALLING_EDGE);
   this->reset();
   this->init();
 }
@@ -118,6 +167,14 @@ void Elero::init() {
   this->write_reg(CC1101_SYNC1, 0xD3);
   this->write_reg(CC1101_SYNC0, 0x91);
   this->write_burst(CC1101_PATABLE, patable_data, 8);
+
+  if(this->raw_diagnostic_) {
+    // Asynchronous serial RX: unfiltered demodulated data appears on GDO0.
+    // FIFO packet handling and sync-word qualification are intentionally off.
+    this->write_reg(CC1101_IOCFG0, 0x0D);
+    this->write_reg(CC1101_PKTCTRL0, 0x30);
+    ESP_LOGW(TAG, "Raw RF diagnostic enabled; normal Elero RX/TX is disabled");
+  }
 
   this->write_cmd(CC1101_SRX);
   this->wait_rx();
@@ -507,6 +564,8 @@ void Elero::register_cover(EleroCover *cover) {
 }
 
 bool Elero::send_command(t_elero_command *cmd) {
+  if(this->raw_diagnostic_)
+    return true;
   ESP_LOGVV(TAG, "send_command called");
   uint16_t code = (0x00 - (cmd->counter * 0x708f)) & 0xffff;
   this->msg_tx_[0] = 0x1d; // message length
