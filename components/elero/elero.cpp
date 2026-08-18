@@ -166,6 +166,14 @@ bool Elero::wait_rx() {
     this->write_cmd(CC1101_SIDLE);
     if(!this->wait_idle())
       return false;
+
+    // Preserve one snapshot of the overflowing FIFO for diagnosing foreign
+    // 868 MHz packet formats before SFRX discards it. In overflow state the
+    // RXBYTES count is no longer reliable, so read exactly the FIFO capacity.
+    this->read_buf(CC1101_RXFIFO, this->msg_rx_, CC1101_FIFO_LENGTH);
+    ESP_LOGD(TAG, "RX overflow raw: %s",
+             format_hex_pretty(this->msg_rx_, CC1101_FIFO_LENGTH).c_str());
+
     this->write_cmd(CC1101_SFRX);
     this->write_cmd(CC1101_SRX);
 
