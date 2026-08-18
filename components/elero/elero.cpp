@@ -12,18 +12,39 @@ static const uint8_t flash_table_decode[] = {0x0a, 0x03, 0x01, 0x0c, 0x0d, 0x07,
 
 void Elero::loop() {
   if(this->raw_diagnostic_) {
-    // PKTSTATUS.CS gates the asynchronous data slicer. Without this carrier
-    // check, GDO0 reports random edges continuously while no transmitter is
-    // active.
-    bool carrier = (this->read_status(CC1101_PKTSTATUS) & 0x40) != 0;
-    if(carrier && !this->raw_capture_active_ && !this->raw_ready_) {
-      uint8_t raw_rssi = this->read_status(CC1101_RSSI);
-      this->raw_rssi_dbm_ = raw_rssi >= 128 ? ((int16_t) raw_rssi - 256) / 2 - 74
-                                            : raw_rssi / 2 - 74;
+    // Gate the asynchronous data slicer by measured RSSI. The CC1101 carrier
+    // sense bit does not assert for all foreign FSK modem parameters.
+    uint8_t raw_rssi = this->read_status(CC1101_RSSI);
+    int16_t rssi_dbm = raw_rssi >= 128 ? ((int16_t) raw_rssi - 256) / 2 - 74
+                                      : raw_rssi / 2 - 74;
+    if(rssi_dbm > this->raw_rssi_peak_dbm_)
+      this->raw_rssi_peak_dbm_ = rssi_dbm;
+
+    uint32_t now_ms = millis();
+    if(now_ms - this->raw_last_rssi_log_ms_ >= 1000) {
+      ESP_LOGD(TAG, "AOK RSSI scan: current=%d dBm peak=%d dBm threshold=%d dBm",
+               rssi_dbm, this->raw_rssi_peak_dbm_, this->raw_rssi_threshold_);
+      this->raw_rssi_peak_dbm_ = rssi_dbm;
+      this->raw_last_rssi_log_ms_ = now_ms;
+    }
+
+    bool signal = rssi_dbm >= this->raw_rssi_threshold_;
+    if(signal) {
+      this->raw_below_threshold_since_ms_ = 0;
+    }
+
+    if(signal && !this->raw_capture_active_ && !this->raw_ready_) {
+      this->raw_rssi_dbm_ = rssi_dbm;
       this->raw_edge_count_ = 0;
       this->raw_last_edge_us_ = micros();
       this->raw_capture_active_ = true;
-    } else if(!carrier && this->raw_capture_active_) {
+    } else if(!signal && this->raw_capture_active_) {
+      if(this->raw_below_threshold_since_ms_ == 0)
+        this->raw_below_threshold_since_ms_ = now_ms;
+    }
+
+    if(this->raw_capture_active_ && this->raw_below_threshold_since_ms_ != 0 &&
+       now_ms - this->raw_below_threshold_since_ms_ >= 5) {
       this->raw_capture_active_ = false;
       if(this->raw_edge_count_ >= 16)
         this->raw_ready_ = true;
@@ -101,6 +122,8 @@ void IRAM_ATTR Elero::set_received() {
 void Elero::dump_config() {
   ESP_LOGCONFIG(TAG, "Elero Config: ");
   ESP_LOGCONFIG(TAG, "  Raw diagnostic: %s", YESNO(this->raw_diagnostic_));
+  if(this->raw_diagnostic_)
+    ESP_LOGCONFIG(TAG, "  Raw RSSI threshold: %d dBm", this->raw_rssi_threshold_);
 }
 
 void Elero::setup() {
