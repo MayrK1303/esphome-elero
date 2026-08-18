@@ -12,14 +12,28 @@ static const uint8_t flash_table_decode[] = {0x0a, 0x03, 0x01, 0x0c, 0x0d, 0x07,
 
 void Elero::loop() {
   if(this->raw_diagnostic_) {
-    if(!this->raw_ready_ && this->raw_edge_count_ >= 16 &&
-       (micros() - this->raw_last_edge_us_) > 15000) {
-      this->raw_ready_ = true;
+    // PKTSTATUS.CS gates the asynchronous data slicer. Without this carrier
+    // check, GDO0 reports random edges continuously while no transmitter is
+    // active.
+    bool carrier = (this->read_status(CC1101_PKTSTATUS) & 0x40) != 0;
+    if(carrier && !this->raw_capture_active_ && !this->raw_ready_) {
+      uint8_t raw_rssi = this->read_status(CC1101_RSSI);
+      this->raw_rssi_dbm_ = raw_rssi >= 128 ? ((int16_t) raw_rssi - 256) / 2 - 74
+                                            : raw_rssi / 2 - 74;
+      this->raw_edge_count_ = 0;
+      this->raw_last_edge_us_ = micros();
+      this->raw_capture_active_ = true;
+    } else if(!carrier && this->raw_capture_active_) {
+      this->raw_capture_active_ = false;
+      if(this->raw_edge_count_ >= 16)
+        this->raw_ready_ = true;
+      else
+        this->raw_edge_count_ = 0;
     }
 
     if(this->raw_ready_) {
       uint16_t count = this->raw_edge_count_;
-      ESP_LOGD(TAG, "AOK raw frame: edges=%u", count);
+      ESP_LOGD(TAG, "AOK carrier frame: rssi=%d dBm edges=%u", this->raw_rssi_dbm_, count);
       for(uint16_t offset = 0; offset < count; offset += 32) {
         char line[320];
         size_t pos = 0;
@@ -67,22 +81,17 @@ void IRAM_ATTR Elero::interrupt(Elero *arg) {
 }
 
 void IRAM_ATTR Elero::handle_raw_edge() {
+  if(!this->raw_capture_active_ || this->raw_ready_)
+    return;
   uint32_t now = micros();
   uint32_t delta = now - this->raw_last_edge_us_;
   this->raw_last_edge_us_ = now;
-  if(this->raw_ready_)
-    return;
-  if(delta > 15000) {
-    if(this->raw_edge_count_ >= 16)
-      this->raw_ready_ = true;
-    else
-      this->raw_edge_count_ = 0;
-    return;
-  }
   if(this->raw_edge_count_ < RAW_EDGE_CAPACITY)
     this->raw_edges_[this->raw_edge_count_++] = delta;
-  else
+  else {
+    this->raw_capture_active_ = false;
     this->raw_ready_ = true;
+  }
 }
 
 void IRAM_ATTR Elero::set_received() {
