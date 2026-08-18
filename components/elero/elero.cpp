@@ -189,7 +189,7 @@ bool Elero::wait_tx() {
 
 bool Elero::wait_tx_done() {
   ESP_LOGVV(TAG, "wait_tx_done");
-  uint8_t timeout = 200;
+  uint16_t timeout = 500;
   
   //while (((this->read_status(CC1101_TXBYTES) & 0x7f) != 0) && (--timeout != 0)) {
   while((!this->received_) && (--timeout != 0)) {
