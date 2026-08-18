@@ -213,15 +213,19 @@ bool Elero::wait_tx() {
 
 bool Elero::wait_tx_done() {
   ESP_LOGVV(TAG, "wait_tx_done");
-  uint8_t timeout = 200;
-  
-  //while (((this->read_status(CC1101_TXBYTES) & 0x7f) != 0) && (--timeout != 0)) {
-  while((!this->received_) && (--timeout != 0)) {
+  uint16_t timeout = 500;
+
+  while(--timeout != 0) {
+    uint8_t marcstate = this->read_status(CC1101_MARCSTATE);
+    if(marcstate == CC1101_MARCSTATE_RX)
+      return true;
+    if(marcstate == CC1101_MARCSTATE_TXFIFO_UFLOW) {
+      ESP_LOGE(TAG, "TX FIFO underflow");
+      return false;
+    }
     delay_microseconds_safe(200);
   }
 
-  if(timeout > 0)
-    return true;
   ESP_LOGE(TAG, "Timed out waiting for TX Done: 0x%02x", this->read_status(CC1101_MARCSTATE));
   return false;
 }
