@@ -30,7 +30,7 @@ void EleroCover::loop() {
     if (millis() >= this->tilt_stop_time_) {
         ESP_LOGD(TAG, "Timed tilt finished -> STOP");
 
-        this->commands_to_send_.push(this->command_stop_);
+        this->commands_to_send_.push(this->stop_command_for(this->last_operation_));
 
         this->timed_tilt_active_ = false;
 
@@ -57,7 +57,7 @@ void EleroCover::loop() {
     this->recompute_position();
 
     if (this->is_at_target()) {
-      this->commands_to_send_.push(this->command_stop_);
+      this->commands_to_send_.push(this->stop_command_for(this->current_operation));
       this->current_operation = COVER_OPERATION_IDLE;
       this->target_position_ = COVER_OPEN;
     }
@@ -230,9 +230,11 @@ void EleroCover::control(const cover::CoverCall &call) {
 
         if (tilt_delta > 0.0f) {
           ESP_LOGD(TAG, "Timed tilt opening to %.0f%%", tilt * 100.0f);
+          this->last_operation_ = COVER_OPERATION_OPENING;
           this->commands_to_send_.push(this->command_up_);
         } else {
           ESP_LOGD(TAG, "Timed tilt closing to %.0f%%", tilt * 100.0f);
+          this->last_operation_ = COVER_OPERATION_CLOSING;
           this->commands_to_send_.push(this->command_down_);
         }
       }
@@ -276,7 +278,8 @@ void EleroCover::start_movement(CoverOperation dir) {
       this->last_operation_ = COVER_OPERATION_CLOSING;
     break;
     case COVER_OPERATION_IDLE:
-      this->commands_to_send_.push(this->command_stop_);
+      this->commands_to_send_.push(this->stop_command_for(
+          this->current_operation == COVER_OPERATION_IDLE ? this->last_operation_ : this->current_operation));
     break;
   }
 
@@ -287,6 +290,14 @@ void EleroCover::start_movement(CoverOperation dir) {
   this->movement_start_ = millis();
   this->last_recompute_time_ = millis();
   this->publish_state();
+}
+
+uint8_t EleroCover::stop_command_for(CoverOperation op) const {
+  if(op == COVER_OPERATION_OPENING)
+    return this->command_stop_up_;
+  if(op == COVER_OPERATION_CLOSING)
+    return this->command_stop_down_;
+  return this->command_stop_;
 }
 
 void EleroCover::recompute_position() {
