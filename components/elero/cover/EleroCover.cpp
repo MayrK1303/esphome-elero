@@ -43,7 +43,6 @@ void EleroCover::loop() {
         this->commands_to_send_.push(this->command_stop_);
 
         this->timed_tilt_active_ = false;
-        this->motion_mode_ = MotionMode::NONE;
 
         this->publish_state();
     }
@@ -149,7 +148,7 @@ void EleroCover::set_rx_state(uint8_t state) {
   case ELERO_STATE_TOP:
     pos = COVER_OPEN;
     op = COVER_OPERATION_IDLE;
-    current_tilt = 0.0;
+    current_tilt = this->supports_tilt_ ? 1.0f : 0.0f;
     break;
   case ELERO_STATE_BOTTOM:
     pos = COVER_CLOSED;
@@ -175,11 +174,10 @@ void EleroCover::set_rx_state(uint8_t state) {
   case ELERO_STATE_STOPPED:
     op = COVER_OPERATION_IDLE;
     this->motion_mode_ = MotionMode::NONE;
-    current_tilt = 0.0;
     break;
   default:
     op = COVER_OPERATION_IDLE;
-    current_tilt = 0.0;
+    break;
   }
 
   if((pos != this->position) || (op != this->current_operation) || (current_tilt != this->tilt)) {
@@ -236,35 +234,20 @@ void EleroCover::control(const cover::CoverCall &call) {
             tilt_delta > 0.0f ? tilt_delta : -tilt_delta;
 
         this->tilt_start_time_ = millis();
-        uint32_t release_delay = 0;
+        this->drive_release_active_ = false;
 
         if (tilt_delta > 0.0f) {
           ESP_LOGD(TAG, "Timed tilt opening to %.0f%%", tilt * 100.0f);
           this->last_operation_ = COVER_OPERATION_OPENING;
           this->commands_to_send_.push(this->command_up_);
-          if (this->has_command_stop_up_) {
-            release_delay = DIRECTIONAL_RELEASE_DELAY_MS;
-            this->drive_release_command_ = this->command_stop_up_;
-            this->drive_release_time_ = this->tilt_start_time_ + release_delay;
-            this->drive_release_active_ = true;
-          }
         } else {
           ESP_LOGD(TAG, "Timed tilt closing to %.0f%%", tilt * 100.0f);
           this->last_operation_ = COVER_OPERATION_CLOSING;
           this->commands_to_send_.push(this->command_down_);
-          if (this->has_command_stop_down_) {
-            release_delay = DIRECTIONAL_RELEASE_DELAY_MS;
-            this->drive_release_command_ = this->command_stop_down_;
-            this->drive_release_time_ = this->tilt_start_time_ + release_delay;
-            this->drive_release_active_ = true;
-          }
         }
 
-        // Directional covers first need a press/release sequence before they
-        // start continuous movement. Measure the actual slat travel only after
-        // that release; finish it with the real STOP command in loop().
         this->tilt_stop_time_ =
-            this->tilt_start_time_ + release_delay +
+            this->tilt_start_time_ +
             static_cast<uint32_t>(tilt_distance * this->tilt_travel_time_);
       }
 
