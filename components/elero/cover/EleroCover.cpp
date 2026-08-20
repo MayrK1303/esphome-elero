@@ -36,6 +36,7 @@ void EleroCover::loop() {
   if (this->timed_tilt_active_) {
     if (millis() >= this->tilt_stop_time_) {
         ESP_LOGD(TAG, "Timed tilt finished -> STOP");
+        this->drive_release_active_ = false;
         this->commands_to_send_.push(this->command_stop_);
 
         this->timed_tilt_active_ = false;
@@ -230,16 +231,27 @@ void EleroCover::control(const cover::CoverCall &call) {
             tilt_delta > 0.0f ? tilt_delta : -tilt_delta;
 
         this->tilt_start_time_ = millis();
-        this->drive_release_active_ = false;
 
         if (tilt_delta < 0.0f) {
           ESP_LOGD(TAG, "Timed tilt opening to %.0f%%", tilt * 100.0f);
           this->last_operation_ = COVER_OPERATION_OPENING;
           this->commands_to_send_.push(this->command_up_);
+          if (this->has_command_stop_up_) {
+            this->drive_release_command_ = this->command_stop_up_;
+            this->drive_release_time_ =
+                this->tilt_start_time_ + DIRECTIONAL_RELEASE_DELAY_MS;
+            this->drive_release_active_ = true;
+          }
         } else {
           ESP_LOGD(TAG, "Timed tilt closing to %.0f%%", tilt * 100.0f);
           this->last_operation_ = COVER_OPERATION_CLOSING;
           this->commands_to_send_.push(this->command_down_);
+          if (this->has_command_stop_down_) {
+            this->drive_release_command_ = this->command_stop_down_;
+            this->drive_release_time_ =
+                this->tilt_start_time_ + DIRECTIONAL_RELEASE_DELAY_MS;
+            this->drive_release_active_ = true;
+          }
         }
 
         this->tilt_stop_time_ =
