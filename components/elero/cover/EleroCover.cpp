@@ -37,7 +37,10 @@ void EleroCover::loop() {
     if (millis() >= this->tilt_stop_time_) {
         ESP_LOGD(TAG, "Timed tilt finished -> STOP");
 
-        this->commands_to_send_.push(this->stop_command_for(this->last_operation_));
+        // A timed slat movement must end with the real STOP command. The
+        // directional 0x21/0x41 codes release a long drive and would start a
+        // complete movement instead of stopping the slats.
+        this->commands_to_send_.push(this->command_stop_);
 
         this->timed_tilt_active_ = false;
         this->motion_mode_ = MotionMode::NONE;
@@ -309,14 +312,6 @@ void EleroCover::start_movement(CoverOperation dir) {
   this->movement_start_ = millis();
   this->last_recompute_time_ = millis();
   this->publish_state();
-}
-
-uint8_t EleroCover::stop_command_for(CoverOperation op) const {
-  if(op == COVER_OPERATION_OPENING)
-    return this->command_stop_up_;
-  if(op == COVER_OPERATION_CLOSING)
-    return this->command_stop_down_;
-  return this->command_stop_;
 }
 
 void EleroCover::recompute_position() {

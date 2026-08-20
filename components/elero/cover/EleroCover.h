@@ -61,7 +61,6 @@ class EleroCover : public cover::Cover, public Component {
     this->tilt_travel_time_ = ms;
   }
   void start_movement(cover::CoverOperation op);
-  uint8_t stop_command_for(cover::CoverOperation op) const;
   bool is_at_target();
   enum class MotionMode : uint8_t {
       NONE,
