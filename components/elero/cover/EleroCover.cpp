@@ -36,15 +36,7 @@ void EleroCover::loop() {
   if (this->timed_tilt_active_) {
     if (millis() >= this->tilt_stop_time_) {
         ESP_LOGD(TAG, "Timed tilt finished -> STOP");
-
-        // Match the TempoTel 2 press/release sequence: 0x20 -> 0x21 when
-        // opening slats and 0x40 -> 0x41 when closing them.
-        const uint8_t release_command =
-            this->last_operation_ == COVER_OPERATION_OPENING
-                ? this->command_stop_up_
-                : this->command_stop_down_;
-        ESP_LOGD(TAG, "Timed tilt release -> 0x%02X", release_command);
-        this->commands_to_send_.push(release_command);
+        this->commands_to_send_.push(this->command_stop_);
 
         this->timed_tilt_active_ = false;
 
@@ -152,12 +144,12 @@ void EleroCover::set_rx_state(uint8_t state) {
   case ELERO_STATE_TOP:
     pos = COVER_OPEN;
     op = COVER_OPERATION_IDLE;
-    current_tilt = this->supports_tilt_ ? 1.0f : 0.0f;
+    current_tilt = 0.0f;
     break;
   case ELERO_STATE_BOTTOM:
     pos = COVER_CLOSED;
     op = COVER_OPERATION_IDLE;
-    current_tilt = 0.0;
+    current_tilt = this->supports_tilt_ ? 1.0f : 0.0f;
     break;
   case ELERO_STATE_START_MOVING_UP:
   case ELERO_STATE_MOVING_UP:
@@ -240,7 +232,7 @@ void EleroCover::control(const cover::CoverCall &call) {
         this->tilt_start_time_ = millis();
         this->drive_release_active_ = false;
 
-        if (tilt_delta > 0.0f) {
+        if (tilt_delta < 0.0f) {
           ESP_LOGD(TAG, "Timed tilt opening to %.0f%%", tilt * 100.0f);
           this->last_operation_ = COVER_OPERATION_OPENING;
           this->commands_to_send_.push(this->command_up_);
@@ -300,7 +292,7 @@ void EleroCover::start_movement(CoverOperation dir) {
         this->drive_release_active_ = true;
       }
       // Reset tilt state on movement
-      this->tilt = 0.0;
+      this->tilt = this->supports_tilt_ ? 1.0f : 0.0f;
       this->last_operation_ = COVER_OPERATION_CLOSING;
     break;
     case COVER_OPERATION_IDLE:
