@@ -37,10 +37,14 @@ void EleroCover::loop() {
     if (millis() >= this->tilt_stop_time_) {
         ESP_LOGD(TAG, "Timed tilt finished -> STOP");
 
-        // A timed slat movement must end with the real STOP command. The
-        // directional 0x21/0x41 codes release a long drive and would start a
-        // complete movement instead of stopping the slats.
-        this->commands_to_send_.push(this->command_stop_);
+        // Match the TempoTel 2 press/release sequence: 0x20 -> 0x21 when
+        // opening slats and 0x40 -> 0x41 when closing them.
+        const uint8_t release_command =
+            this->last_operation_ == COVER_OPERATION_OPENING
+                ? this->command_stop_up_
+                : this->command_stop_down_;
+        ESP_LOGD(TAG, "Timed tilt release -> 0x%02X", release_command);
+        this->commands_to_send_.push(release_command);
 
         this->timed_tilt_active_ = false;
 
