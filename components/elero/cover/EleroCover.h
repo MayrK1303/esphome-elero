@@ -115,6 +115,7 @@ protected:
   bool drive_release_active_{false};
   uint8_t drive_release_command_{0x10};
   uint32_t drive_release_time_{0};
+  static constexpr uint32_t DIRECTIONAL_RELEASE_DELAY_MS = 1900;
   uint8_t command_tilt_{0x24};
   std::queue<uint8_t> commands_to_send_;
   uint8_t send_retries_{0};
