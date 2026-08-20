@@ -26,6 +26,13 @@ void EleroCover::setup() {
 void EleroCover::loop() {
   uint32_t intvl = this->poll_intvl_;
   uint32_t now = millis();
+  if (this->drive_release_active_ &&
+      static_cast<int32_t>(now - this->drive_release_time_) >= 0) {
+    ESP_LOGD(TAG, "Directional drive release -> 0x%02X",
+             this->drive_release_command_);
+    this->commands_to_send_.push(this->drive_release_command_);
+    this->drive_release_active_ = false;
+  }
   if (this->timed_tilt_active_) {
     if (millis() >= this->tilt_stop_time_) {
         ESP_LOGD(TAG, "Timed tilt finished -> STOP");
@@ -268,6 +275,11 @@ void EleroCover::start_movement(CoverOperation dir) {
     case COVER_OPERATION_OPENING:
       ESP_LOGV(TAG, "Sending OPEN command");
       this->commands_to_send_.push(this->command_up_);
+      if (this->has_command_stop_up_) {
+        this->drive_release_command_ = this->command_stop_up_;
+        this->drive_release_time_ = millis() + 1900;
+        this->drive_release_active_ = true;
+      }
       // Reset tilt state on movement
       this->tilt = 0.0;
       this->last_operation_ = COVER_OPERATION_OPENING;
@@ -275,11 +287,17 @@ void EleroCover::start_movement(CoverOperation dir) {
     case COVER_OPERATION_CLOSING:
       ESP_LOGV(TAG, "Sending CLOSE command");
       this->commands_to_send_.push(this->command_down_);
+      if (this->has_command_stop_down_) {
+        this->drive_release_command_ = this->command_stop_down_;
+        this->drive_release_time_ = millis() + 1900;
+        this->drive_release_active_ = true;
+      }
       // Reset tilt state on movement
       this->tilt = 0.0;
       this->last_operation_ = COVER_OPERATION_CLOSING;
     break;
     case COVER_OPERATION_IDLE:
+      this->drive_release_active_ = false;
       this->commands_to_send_.push(this->command_stop_);
     break;
   }

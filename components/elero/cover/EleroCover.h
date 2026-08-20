@@ -34,8 +34,14 @@ class EleroCover : public cover::Cover, public Component {
     this->command_stop_up_ = cmd;
     this->command_stop_down_ = cmd;
   }
-  void set_command_stop_up(uint8_t cmd) { this->command_stop_up_ = cmd; }
-  void set_command_stop_down(uint8_t cmd) { this->command_stop_down_ = cmd; }
+  void set_command_stop_up(uint8_t cmd) {
+    this->command_stop_up_ = cmd;
+    this->has_command_stop_up_ = true;
+  }
+  void set_command_stop_down(uint8_t cmd) {
+    this->command_stop_down_ = cmd;
+    this->has_command_stop_down_ = true;
+  }
   void set_command_check(uint8_t cmd) { this->command_check_ = cmd; }
   void set_command_tilt(uint8_t cmd) { this->command_tilt_ = cmd; }
   void set_poll_offset(uint32_t offset) { this->poll_offset_ = offset; }
@@ -105,6 +111,11 @@ protected:
   uint8_t command_stop_{0x10};
   uint8_t command_stop_up_{0x10};
   uint8_t command_stop_down_{0x10};
+  bool has_command_stop_up_{false};
+  bool has_command_stop_down_{false};
+  bool drive_release_active_{false};
+  uint8_t drive_release_command_{0x10};
+  uint32_t drive_release_time_{0};
   uint8_t command_tilt_{0x24};
   std::queue<uint8_t> commands_to_send_;
   uint8_t send_retries_{0};
