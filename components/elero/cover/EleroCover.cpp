@@ -1,5 +1,6 @@
 #include "EleroCover.h"
 #include "esphome/core/log.h"
+#include <cmath>
 
 namespace esphome {
 namespace elero {
@@ -217,16 +218,22 @@ void EleroCover::control(const cover::CoverCall &call) {
       if (this->tilt_control_ == TiltControl::COMMAND) {
           this->commands_to_send_.push(this->command_tilt_);
       } else {
+          float delta = tilt - this->tilt;
+
           // Vorbereitung für zeitgesteuerten Tilt
           this->tilt_target_ = tilt;
-          this->timed_tilt_active_ = true;
 
-          this->tilt_start_time_ = millis();
-          this->tilt_stop_time_ =
-              this->tilt_start_time_ +
-              (uint32_t)(tilt * this->tilt_travel_time_);
+          if (delta != 0.0f) {
+              this->timed_tilt_active_ = true;
 
-          this->commands_to_send_.push(this->command_up_);
+              this->tilt_start_time_ = millis();
+              this->tilt_stop_time_ =
+                  this->tilt_start_time_ +
+                  (uint32_t)(std::abs(delta) * this->tilt_travel_time_);
+
+              this->commands_to_send_.push(
+                  delta > 0.0f ? this->command_up_ : this->command_down_);
+          }
       }
 
       this->tilt = tilt;
