@@ -1,0 +1,125 @@
+# Board: AZ-Delivery ESP-32 Dev Kit C V4
+# Definition: definitions/boards/az-delivery-devkit-v4/manifest.yaml
+
+esphome:
+  name: elero-gateway
+
+esp32:
+  board: az-delivery-devkit-v4
+  framework:
+    type: arduino
+    advanced:
+      minimum_chip_revision: "3.0"
+      sram1_as_iram: true
+
+logger:
+  level: DEBUG
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  use_address: !secret elero_gateway_ip
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/MayrK1303/esphome-elero
+      ref: rebuild/tilt-2026-07-11
+    refresh: 1s
+
+spi:
+  clk_pin: GPIO18
+  mosi_pin: GPIO23
+  miso_pin: GPIO19
+
+elero:
+  cs_pin: GPIO5
+  gdo0_pin: GPIO26
+  freq0: 0xc0
+  freq1: 0x71
+  freq2: 0x21
+
+cover:
+  - platform: elero
+    blind_address: !secret atelier_fenster_blind_address
+    channel: 17
+    remote_address: !secret elero_remote_address
+    name: "Atelier_Fenster"
+    open_duration: 22.6s
+    close_duration: 22.6s
+    pck_inf1: 0x6a
+    pck_inf2: 0x10
+    hop: 0x00
+
+  - platform: elero
+    blind_address: !secret atelier_terrassentuer_blind_address
+    channel: 2
+    remote_address: !secret elero_remote_address
+    name: "Atelier_Terrassentür"
+    open_duration: 34s
+    close_duration: 34s
+    pck_inf1: 0x6a
+    pck_inf2: 0x10
+    hop: 0x00
+
+  - platform: elero
+    blind_address: !secret stiegenhaus_blind_address
+    channel: 3
+    remote_address: !secret elero_remote_address
+    name: "Stiegenhaus"
+    open_duration: 33s
+    close_duration: 33s
+    pck_inf1: 0x6a
+    pck_inf2: 0x10
+    hop: 0x00
+
+  - platform: elero
+    blind_address: !secret schlafzimmer_blind_address
+    channel: 4
+    remote_address: !secret elero_remote_address
+    name: "Schlafzimmer"
+    open_duration: 24.3s
+    close_duration: 24.3s
+    pck_inf1: 0x6a
+    pck_inf2: 0x10
+    hop: 0x00
+
+  - platform: elero
+    blind_address: !secret windfang_blind_address
+    remote_address: !secret elero_remote_address
+    channel: 5
+    pck_inf1: 0x6a
+    pck_inf2: 0x00
+    hop: 0x0a
+    name: "Windfang"
+    command_up: 0x21
+    command_down: 0x41
+    command_stop: 0x10
+    supports_tilt: true
+    tilt_control: timed
+    tilt_travel_time: 1600ms
+    open_duration: 64s
+    close_duration: 64s
+
+sensor:
+  - platform: wifi_signal
+    name: "Elero WLAN Signal"
+    update_interval: 60s
+
+  - platform: uptime
+    name: "Elero Uptime"
+
+text_sensor:
+  - platform: version
+    name: "ESPHome Version"
+
+binary_sensor:
+  - platform: status
+    name: "Elero Gateway Status"
