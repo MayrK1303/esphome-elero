@@ -139,12 +139,16 @@ void EleroCover::set_rx_state(uint8_t state) {
   case ELERO_STATE_TOP:
     pos = COVER_OPEN;
     op = COVER_OPERATION_IDLE;
-    current_tilt = 0.0;
+    if (this->motion_mode_ != MotionMode::TILT) {
+      current_tilt = 0.0;
+    }
     break;
   case ELERO_STATE_BOTTOM:
     pos = COVER_CLOSED;
     op = COVER_OPERATION_IDLE;
-    current_tilt = 0.0;
+    if (this->motion_mode_ != MotionMode::TILT) {
+      current_tilt = 0.0;
+    }
     break;
   case ELERO_STATE_START_MOVING_UP:
   case ELERO_STATE_MOVING_UP:
