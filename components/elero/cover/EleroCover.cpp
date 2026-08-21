@@ -29,8 +29,6 @@ void EleroCover::loop() {
   uint32_t now = millis();
   if (this->timed_tilt_active_) {
     if (millis() >= this->tilt_stop_time_) {
-        ESP_LOGD(TAG, "Timed tilt finished -> STOP");
-
         this->commands_to_send_.push(this->command_stop_);
 
         this->timed_tilt_active_ = false;
@@ -213,9 +211,6 @@ void EleroCover::control(const cover::CoverCall &call) {
   }
   if (call.get_tilt().has_value()) {
       auto tilt = *call.get_tilt();
-      ESP_LOGI(TAG, "Tilt request %.0f%% -> sending 0x%02X",
-        tilt * 100.0f,
-        this->command_tilt_);
       this->motion_mode_ = MotionMode::TILT;
 
       if (this->tilt_control_ == TiltControl::COMMAND) {
