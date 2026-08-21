@@ -221,7 +221,13 @@ void EleroCover::control(const cover::CoverCall &call) {
       if (this->tilt_control_ == TiltControl::COMMAND) {
           this->commands_to_send_.push(this->command_tilt_);
       } else {
-          float delta = tilt - this->tilt;
+          auto mechanical_tilt = [](float value) {
+              if (value <= 0.25f) {
+                  return value * 1.6f;
+              }
+              return 0.4f + (value - 0.25f) * 0.8f;
+          };
+          float delta = mechanical_tilt(tilt) - mechanical_tilt(this->tilt);
 
           // Vorbereitung für zeitgesteuerten Tilt
           this->tilt_target_ = tilt;
